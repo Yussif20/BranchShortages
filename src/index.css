@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/* Arabic Font Support */
+* {
+  font-family: "Cairo", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Better Arabic number display */
+input[type="number"] {
+  text-align: center;
+}
+
+/* Scrollbar styling for RTL */
+[dir="rtl"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[dir="rtl"]::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+[dir="rtl"]::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+[dir="rtl"]::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+button,
+a {
+  cursor: pointer;
+}
