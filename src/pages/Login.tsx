@@ -33,7 +33,7 @@ const Login: React.FC = () => {
     >
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img className="mx-auto h-16 w-auto" src="/react.svg" alt="Logo" />
+          <img className="mx-auto h-32 w-auto" src="/logo.png" alt="Logo" />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             تسجيل الدخول
           </h2>
@@ -84,7 +84,10 @@ const Login: React.FC = () => {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setShowPassword(!showPassword);
+                  }}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                   tabIndex={-1}
                 >

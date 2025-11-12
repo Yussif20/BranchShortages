@@ -3,6 +3,7 @@ export interface FormRow {
   item: string;
   barcode: string;
   quantity: string;
+  size: string;
   packing: "حبة" | "كرتون" | "شد" | "";
   company: string;
   altCompany: string;
@@ -11,6 +12,7 @@ export interface FormRow {
 
 export interface FormData {
   branchName: string;
+  department: string;
   enteredBy: string;
   date: string;
   rows: FormRow[];

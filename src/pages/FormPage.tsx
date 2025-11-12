@@ -6,11 +6,37 @@ import type { FormRow, FormData, DailyForm } from "../types";
 import { ID, Query } from "appwrite";
 import jsPDF from "jspdf";
 
-const BRANCHES = ["الرياض - فرع الشمال", "جدة - فرع الجنوب"];
+const BRANCHES = [
+  "مكة-العتيبية",
+  "مكة-الشوقية",
+  "مكة-النورية",
+  "مكة-الزايدي",
+  "مكة-الشرائع",
+  "جدة-المنار",
+  "جدة-النسيم",
+];
+
+const DEPARTMENTS = [
+  "مواد غذائية",
+  "منظفات",
+  "استهلاكية",
+  "عناية شخصية",
+  "العاب",
+  "مكتبية",
+  "مستحضرات تجميل",
+  "اكسسوارات",
+  "ملابس",
+  "عطور",
+  "منزلية",
+];
+
 const PACKING_OPTIONS = ["حبة", "كرتون", "شد"];
+
 const WHATSAPP_CONTACTS = [
-  { name: "مدير المخزون", number: "+201014921282" },
-  { name: "مدير المشتريات", number: "+201014921283" },
+  { name: "محمد عبدالله", number: "966580629839" },
+  { name: "بلال احمد", number: "966544000185" },
+  { name: "جلال العيسائي", number: "966534300055" },
+  { name: "غسان سروري", number: "966506248310" },
 ];
 
 const FormPage: React.FC = () => {
@@ -20,6 +46,7 @@ const FormPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     branchName: "",
+    department: "",
     enteredBy: "",
     date: new Date().toISOString().split("T")[0],
     rows: Array.from({ length: 30 }, (_, i) => ({
@@ -27,6 +54,7 @@ const FormPage: React.FC = () => {
       item: "",
       barcode: "",
       quantity: "",
+      size: "",
       packing: "",
       company: "",
       altCompany: "",
@@ -62,6 +90,7 @@ const FormPage: React.FC = () => {
 
         setFormData({
           branchName: draft.branchName || "",
+          department: draft.department || "",
           enteredBy: draft.enteredBy || "",
           date: draft.date || new Date().toISOString().split("T")[0],
           rows:
@@ -71,6 +100,7 @@ const FormPage: React.FC = () => {
               item: "",
               barcode: "",
               quantity: "",
+              size: "",
               packing: "",
               company: "",
               altCompany: "",
@@ -93,6 +123,7 @@ const FormPage: React.FC = () => {
       const dataToSave = {
         userId: user.$id,
         branchName: formData.branchName,
+        department: formData.department,
         enteredBy: formData.enteredBy,
         date: formData.date,
         rows: JSON.stringify(formData.rows),
@@ -166,6 +197,7 @@ const FormPage: React.FC = () => {
           item: "",
           barcode: "",
           quantity: "",
+          size: "",
           packing: "",
           company: "",
           altCompany: "",
@@ -210,23 +242,27 @@ const FormPage: React.FC = () => {
         <p style="margin: 5px 0;"><strong>اسم الفرع:</strong> ${
           formData.branchName
         }</p>
+        <p style="margin: 5px 0;"><strong>القسم:</strong> ${
+          formData.department
+        }</p>
         <p style="margin: 5px 0;"><strong>اسم المدخل:</strong> ${
           formData.enteredBy
         }</p>
         <p style="margin: 5px 0;"><strong>التاريخ:</strong> ${formData.date}</p>
       </div>
 
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
         <thead>
           <tr style="background-color: #428bca; color: white;">
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">تسلسل</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">الصنف</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">الباركود</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">الكمية</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">التعبئة</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">اسم الشركة</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">الشركة البديلة</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">ملاحظات</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">تسلسل</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">الصنف</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">الباركود</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">الكمية</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">المقاس/الحجم</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">التعبئة</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">اسم الشركة</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">الشركة البديلة</th>
+            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">ملاحظات</th>
           </tr>
         </thead>
         <tbody>
@@ -234,13 +270,14 @@ const FormPage: React.FC = () => {
             .map(
               (row) => `
             <tr>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.sequence}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.item}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.barcode}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.quantity}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.packing}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.company}</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.altCompany}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.sequence}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.item}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.barcode}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.quantity}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.size}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.packing}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.company}</td>
+              <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${row.altCompany}</td>
               <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${row.notes}</td>
             </tr>
           `
@@ -310,7 +347,7 @@ const FormPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <img src="/react.svg" alt="Logo" className="h-10 w-10" />
+              <img src="/logo.png" alt="Logo" className="h-10 w-10" />
               <h1 className="text-2xl font-bold text-gray-900">
                 نظام تسجيل نواقص الفروع
               </h1>
@@ -337,7 +374,7 @@ const FormPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white shadow rounded-lg p-6">
           {/* Header Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 اسم الفرع <span className="text-red-500">*</span>
@@ -354,6 +391,26 @@ const FormPage: React.FC = () => {
                 {BRANCHES.map((branch) => (
                   <option key={branch} value={branch}>
                     {branch}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                القسم <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.department}
+                onChange={(e) =>
+                  handleHeaderChange("department", e.target.value)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">اختر القسم</option>
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
                   </option>
                 ))}
               </select>
@@ -405,6 +462,9 @@ const FormPage: React.FC = () => {
                     الكمية
                   </th>
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    المقاس/الحجم
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
                     التعبئة
                   </th>
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -453,6 +513,16 @@ const FormPage: React.FC = () => {
                         value={row.quantity}
                         onChange={(e) =>
                           handleRowChange(index, "quantity", e.target.value)
+                        }
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        value={row.size}
+                        onChange={(e) =>
+                          handleRowChange(index, "size", e.target.value)
                         }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
