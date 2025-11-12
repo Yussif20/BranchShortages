@@ -5,6 +5,7 @@ import { databases, DATABASE_ID, COLLECTION_ID } from "../lib/appwrite";
 import type { FormRow, FormData, DailyForm } from "../types";
 import { ID, Query } from "appwrite";
 import jsPDF from "jspdf";
+import BarcodeScanner from "../components/BarcodeScanner";
 
 const BRANCHES = [
   "مكة-العتيبية",
@@ -62,6 +63,21 @@ const FormPage: React.FC = () => {
     })),
   });
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerRowIndex, setScannerRowIndex] = useState<number | null>(null);
+
+  const openScanner = (rowIndex: number) => {
+    setScannerRowIndex(rowIndex);
+    setScannerOpen(true);
+  };
+
+  const handleDetectedBarcode = (text: string) => {
+    if (scannerRowIndex !== null) {
+      handleRowChange(scannerRowIndex, "barcode", text);
+    }
+    setScannerOpen(false);
+    setScannerRowIndex(null);
+  };
 
   const loadDraft = useCallback(async () => {
     if (!user) return;
@@ -342,6 +358,15 @@ const FormPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => {
+          setScannerOpen(false);
+          setScannerRowIndex(null);
+        }}
+        onDetected={handleDetectedBarcode}
+      />
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -498,14 +523,34 @@ const FormPage: React.FC = () => {
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        value={row.barcode}
-                        onChange={(e) =>
-                          handleRowChange(index, "barcode", e.target.value)
-                        }
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={row.barcode}
+                          onChange={(e) =>
+                            handleRowChange(index, "barcode", e.target.value)
+                          }
+                          className="w-full pr-9 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 left-2 my-auto text-gray-500 hover:text-gray-700"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            openScanner(index);
+                          }}
+                          title="فتح الكاميرا لمسح الباركود"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="w-5 h-5"
+                          >
+                            <path d="M8.25 4.5A2.25 2.25 0 0 0 6 6.75v.75H4.5A2.25 2.25 0 0 0 2.25 9.75v7.5A2.25 2.25 0 0 0 4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25v-7.5A2.25 2.25 0 0 0 19.5 7.5H18v-.75A2.25 2.25 0 0 0 15.75 4.5h-7.5ZM9 9a.75.75 0 0 1 .75-.75h4.5A.75.75 0 0 1 15 9v6a.75.75 0 0 1-.75.75h-4.5A.75.75 0 0 1 9 15V9Z" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <input
