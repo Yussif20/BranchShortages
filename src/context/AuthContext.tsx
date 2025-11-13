@@ -40,6 +40,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     try {
+      // Delete any existing session first to avoid conflicts
+      try {
+        await account.deleteSession("current");
+      } catch {
+        // Ignore error if no session exists
+      }
+
       await account.createEmailPasswordSession(email, password);
       await checkUser();
     } catch (error) {
