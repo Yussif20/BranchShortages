@@ -88,7 +88,7 @@ const Login: React.FC = () => {
                     e.preventDefault();
                     setShowPassword(!showPassword);
                   }}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  className="absolute z-50 left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -98,7 +98,7 @@ const Login: React.FC = () => {
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-5 h-5 z-30"
                     >
                       <path
                         strokeLinecap="round"
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-5 h-5 z-30"
                     >
                       <path
                         strokeLinecap="round"
