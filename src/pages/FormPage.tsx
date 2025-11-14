@@ -155,7 +155,7 @@ const FormPage: React.FC = () => {
         DATABASE_ID,
         COLLECTION_ID,
         [
-          Query.equal("userId", user.$id),
+          Query.equal("$createdBy", user.$id),
           Query.orderDesc("$updatedAt"),
           Query.limit(1),
         ]
@@ -793,10 +793,10 @@ const FormPage: React.FC = () => {
             >
               تحميل PDF
             </button>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col md:flex-row gap-2 items-center">
               <select
                 id="whatsapp-contact"
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 max-w-fit"
               >
                 <option value="">اختر جهة الاتصال</option>
                 {WHATSAPP_CONTACTS.map((contact) => (
