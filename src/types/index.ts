@@ -16,6 +16,7 @@ export interface FormData {
   enteredBy: string;
   date: string;
   rows: FormRow[];
+  photos?: string[]; // base64 images
 }
 
 export interface DailyForm extends FormData {

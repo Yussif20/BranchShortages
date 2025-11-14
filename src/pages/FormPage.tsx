@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { databases, DATABASE_ID, COLLECTION_ID } from "../lib/appwrite";
@@ -61,10 +61,77 @@ const FormPage: React.FC = () => {
       altCompany: "",
       notes: "",
     })),
+    photos: [],
   });
   const [draftId, setDraftId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerRowIndex, setScannerRowIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAddPhotosClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const resizeImage = (
+    file: File,
+    maxSize = 1200,
+    quality = 0.8
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+          if (width > height) {
+            if (width > maxSize) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return reject(new Error("Canvas not supported"));
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = reader.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files).slice(0, 20); // limit to 20 images
+    try {
+      const resized = await Promise.all(list.map((f) => resizeImage(f)));
+      setFormData((prev) => ({
+        ...prev,
+        photos: [...(prev.photos || []), ...resized],
+      }));
+    } catch (e) {
+      console.error("Error processing images:", e);
+      alert("تعذر معالجة الصور المختارة.");
+    }
+  };
+
+  const removePhotoAt = (idx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      photos: (prev.photos || []).filter((_, i) => i !== idx),
+    }));
+  };
 
   const openScanner = (rowIndex: number) => {
     setScannerRowIndex(rowIndex);
@@ -103,6 +170,18 @@ const FormPage: React.FC = () => {
         if (typeof rows === "string") {
           rows = JSON.parse(rows);
         }
+        // Parse photos if present
+        let parsedPhotos: string[] = [];
+        const rawPhotos = (draft as unknown as { photos?: unknown }).photos;
+        if (typeof rawPhotos === "string") {
+          try {
+            parsedPhotos = JSON.parse(rawPhotos) as string[];
+          } catch {
+            parsedPhotos = [];
+          }
+        } else if (Array.isArray(rawPhotos)) {
+          parsedPhotos = rawPhotos as string[];
+        }
 
         setFormData({
           branchName: draft.branchName || "",
@@ -122,6 +201,7 @@ const FormPage: React.FC = () => {
               altCompany: "",
               notes: "",
             })),
+          photos: parsedPhotos,
         });
       }
     } catch (error) {
@@ -136,7 +216,7 @@ const FormPage: React.FC = () => {
 
     setSaving(true);
     try {
-      const dataToSave = {
+      const dataToSave: Record<string, unknown> = {
         userId: user.$id,
         branchName: formData.branchName,
         department: formData.department,
@@ -144,6 +224,15 @@ const FormPage: React.FC = () => {
         date: formData.date,
         rows: JSON.stringify(formData.rows),
       };
+
+      // Attempt to save photos as JSON string; if collection schema disallows it,
+      // the backend may ignore or reject. Errors are caught below.
+      if (formData.photos && formData.photos.length > 0) {
+        dataToSave.photos = JSON.stringify(formData.photos);
+      } else {
+        // Save explicit empty array to clear previous
+        dataToSave.photos = JSON.stringify([]);
+      }
 
       if (draftId) {
         await databases.updateDocument(
@@ -324,10 +413,56 @@ const FormPage: React.FC = () => {
       format: "a4",
     });
 
-    const imgWidth = 297; // A4 landscape width in mm
+    const pageWidth = 297; // A4 landscape width in mm
+    const pageHeight = 210; // A4 landscape height in mm
+    const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    doc.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+    doc.addImage(
+      imgData,
+      "PNG",
+      0,
+      0,
+      imgWidth,
+      Math.min(imgHeight, pageHeight)
+    );
+
+    // Add each photo on its own separate page, scaled larger
+    if (formData.photos && formData.photos.length > 0) {
+      // Fit images within margins
+      const margin = 10; // mm
+      const maxW = pageWidth - margin * 2;
+      const maxH = pageHeight - margin * 2;
+
+      for (let i = 0; i < formData.photos.length; i++) {
+        const src = formData.photos[i];
+        // Await image load to compute aspect ratio precisely
+        await new Promise<void>((resolve) => {
+          const imgEl = new Image();
+          imgEl.onload = () => {
+            const iw = imgEl.naturalWidth || imgEl.width;
+            const ih = imgEl.naturalHeight || imgEl.height;
+            // Compute scale to fit within maxW x maxH
+            const ratio = Math.min(maxW / iw, maxH / ih);
+            const drawW = Math.max(1, iw * ratio);
+            const drawH = Math.max(1, ih * ratio);
+            const x = (pageWidth - drawW) / 2;
+            const y = (pageHeight - drawH) / 2;
+
+            doc.addPage();
+            // dataURL created as JPEG; if not, jsPDF can still handle
+            doc.addImage(src, "JPEG", x, y, drawW, drawH);
+            resolve();
+          };
+          imgEl.onerror = () => {
+            // On error, still add a blank page to keep indexing predictable
+            doc.addPage();
+            resolve();
+          };
+          imgEl.src = src;
+        });
+      }
+    }
 
     // Save PDF
     const fileName = `نواقص_${formData.branchName}_${formData.date}.pdf`;
@@ -687,6 +822,66 @@ const FormPage: React.FC = () => {
                 إرسال عبر واتساب
               </button>
             </div>
+          </div>
+
+          {/* Photos Section */}
+          <div className="mt-10 border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                الصور المرفقة
+              </h3>
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFilesSelected(e.target.files)}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddPhotosClick}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm"
+                >
+                  إضافة صور من الكاميرا/المعرض
+                </button>
+              </div>
+            </div>
+
+            {formData.photos && formData.photos.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {formData.photos.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="border rounded-md overflow-hidden bg-gray-50"
+                  >
+                    <div className="aspect-video bg-black/5 flex items-center justify-center">
+                      <img
+                        src={src}
+                        alt={`attachment-${idx}`}
+                        className="max-h-60 object-contain"
+                      />
+                    </div>
+                    <div className="p-2 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removePhotoAt(idx)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        حذف الصورة
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 text-center">
+                لا توجد صور مرفقة حالياً. اضغط على زر "إضافة صور" لالتقاط أو
+                اختيار صور.
+              </div>
+            )}
           </div>
         </div>
       </div>
